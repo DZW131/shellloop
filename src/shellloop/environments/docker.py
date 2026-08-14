@@ -27,8 +27,34 @@ class DockerEnvironment:
         self._runner = runner
 
     @staticmethod
-    def available() -> bool:
-        return shutil.which("docker") is not None
+    def available(image: str | None = None) -> bool:
+        if shutil.which("docker") is None:
+            return False
+        try:
+            if (
+                subprocess.run(
+                    ["docker", "info"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                    check=False,
+                ).returncode
+                != 0
+            ):
+                return False
+            return (
+                image is None
+                or subprocess.run(
+                    ["docker", "image", "inspect", image],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                    check=False,
+                ).returncode
+                == 0
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return False
 
     def execute(self, action: Action) -> Output:
         if not self.available():

@@ -38,14 +38,27 @@ try {
         }
     }
 
-    if ($null -eq (Get-Command docker -ErrorAction SilentlyContinue)) {
-        throw "Docker Desktop is required. Shellloop will not run Agent commands on this computer."
+    $taskDockerReady = $false
+    if ($null -ne (Get-Command docker -ErrorAction SilentlyContinue)) {
+        $taskDockerPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            & docker info *> $null
+            $taskDockerReady = $LASTEXITCODE -eq 0
+        }
+        finally {
+            $ErrorActionPreference = $taskDockerPreference
+        }
     }
-
-    Write-Host "Building the isolated Shellloop sandbox image..."
-    & docker build -t shellloop-sandbox:0.4 -f Dockerfile.sandbox .
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to build the Docker sandbox image."
+    if ($taskDockerReady) {
+        Write-Host "Building the isolated Shellloop sandbox image..."
+        & docker build -t shellloop-sandbox:0.5 -f Dockerfile.sandbox .
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Sandbox build failed; Studio will start in preview-only mode."
+        }
+    }
+    else {
+        Write-Warning "Docker Engine is unavailable; Studio will start in preview-only mode."
     }
 
     Write-Host "Starting Shellloop Studio at http://127.0.0.1:$Port"

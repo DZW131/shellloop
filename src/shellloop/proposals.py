@@ -29,6 +29,8 @@ class HarnessProposal:
     verification_duration_ms: int | None = None
     applied: bool = False
     comparison: dict[str, Any] | None = None
+    origin: str = "natural-language"
+    source_version_id: str | None = None
 
     @property
     def verified(self) -> bool:
@@ -87,6 +89,8 @@ def proposal_data(proposal: HarnessProposal) -> dict[str, Any]:
         },
         "applied": proposal.applied,
         "comparison": proposal.comparison,
+        "origin": proposal.origin,
+        "source_version_id": proposal.source_version_id,
     }
 
 

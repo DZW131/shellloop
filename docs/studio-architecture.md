@@ -45,9 +45,9 @@ artifact-owned session. `DockerEnvironment` mounts only that copy at
 - dropped Linux capabilities and `no-new-privileges`;
 - CPU, memory, process-count, and command-time limits.
 
-No Docker executable means no command execution. Studio can still show its
-configuration and generate a proposal preview, but it cannot start or verify a
-candidate run.
+Studio checks the Docker executable, live engine, and requested sandbox image.
+If any is unavailable, the launchers still open the local UI in preview-only
+mode; Studio cannot start or verify a candidate run, and the CLI fails closed.
 
 ## Evolution Workbench
 
@@ -67,22 +67,30 @@ verification_retries
 `HarnessProposal` retains a current spec and a candidate spec in memory. It
 does not retain the request text or API key. Verification writes the candidate
 configuration only into a fresh Docker session and runs the project's test
-command there. A non-zero result disables application.
+command there with an independent 120-second gate limit. A candidate's shorter
+per-command timeout therefore cannot truncate the project gate. A non-zero
+result disables application.
 
 The workflow fields produce an explicit `Understand → Plan → Act → Observe →
 Verify → Retry → Finish` graph. Disabled stages remain visible as skipped nodes
 so a beginner can see that changing configuration changes actual control flow,
 not just text on a screen.
 
-An optional comparison runs the current and candidate specs on the same task in
-separate temporary workspaces. It reports safe aggregate metrics and a cautious
-single-run conclusion. The task, messages, generated files, and raw outputs are
-discarded when each comparison run exits. This complements the deterministic
-test gate; it never replaces it.
+`evaluations.yaml` defines a bounded suite of task/check pairs. A comparison
+runs the current and candidate specs in separate temporary workspaces for every
+selected case. After the Agent stops, the case's deterministic check runs in the
+same container workspace, so an unsupported completion claim cannot count as a
+success. The browser receives case descriptions, aggregate metrics, and scoped
+safe events—not saved task bodies or checker commands. Tasks, messages,
+generated files, and raw outputs are discarded when each evaluation exits.
+This complements the project test gate; it never replaces it.
 
-When a user explicitly presses **批准并应用**, Studio saves the old
-`harness.yaml` into `artifacts/studio/harness-history/` and writes the verified
-candidate to the active project. The Agent never calls this operation itself.
+`HarnessVersionStore` records every active configuration with timestamp,
+source, parent revision, and content fingerprint. When a user explicitly
+presses **批准并应用**, Studio first rejects stale proposals, then writes the
+verified candidate and advances the active version pointer. Selecting an old
+revision creates a restore proposal that must pass the same test and approval
+path. The Agent never calls activation itself.
 
 ## Extension rule
 

@@ -10,7 +10,7 @@
       <div class="status-row" id="status"><span class="pill">正在检查本地沙箱…</span></div>
       <section class="cards">
         <article class="card"><h2>运行观测台</h2><p>按步骤呈现模型请求、动作解析、命令执行、返回码和最终状态。它显示可验证事件，而不是隐藏推理。</p><a href="runtime.html">打开实时观测台</a></article>
-        <article class="card"><h2>演化工作台</h2><p>用自然语言提出改进，比较当前与候选 Harness，先在沙箱验证，再由你批准应用。</p><a href="evolution.html">打开演化工作台</a></article>
+        <article class="card"><h2>演化工作台</h2><p>用自然语言提出改进，通过多任务评测与版本时间线比较、验证并安全恢复 Harness。</p><a href="evolution.html">打开演化工作台</a></article>
       </section>
     </main>
     <script>fetch('/api/status').then(r=>r.json()).then(s=>{document.querySelector('#status').innerHTML=`<span class="pill ${s.sandbox_available?'ok':'warn'}"><i class="dot"></i>${s.sandbox_available?'Docker 沙箱可用':'Docker 未就绪：仅可预览'}</span><span class="pill">本地服务 · 127.0.0.1</span><span class="pill">真实 API · 密钥不保存</span>`}).catch(()=>{document.querySelector('#status').textContent='无法读取 Studio 状态'})</script>

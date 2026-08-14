@@ -21,7 +21,7 @@ class TestModel:
 
 def _patch_run_dependencies(monkeypatch: pytest.MonkeyPatch, workspace: Path) -> None:
     monkeypatch.setattr("shellloop.cli._build_model", lambda config, key: TestModel())
-    monkeypatch.setattr(DockerEnvironment, "available", staticmethod(lambda: True))
+    monkeypatch.setattr(DockerEnvironment, "available", staticmethod(lambda image=None: True))
     monkeypatch.setattr(
         DockerEnvironment,
         "execute",
@@ -93,7 +93,7 @@ def test_openai_compatible_model_is_built_without_network_access():
 
 
 def test_cli_refuses_host_execution_when_docker_is_unavailable(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(DockerEnvironment, "available", staticmethod(lambda: False))
+    monkeypatch.setattr(DockerEnvironment, "available", staticmethod(lambda image=None: False))
     monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
     result = CliRunner().invoke(app, ["--task", "Do work", "--model", "test-model", "--yolo"])
 

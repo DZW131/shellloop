@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-SANDBOX_IMAGE = "shellloop-sandbox:0.4"
+SANDBOX_IMAGE = "shellloop-sandbox:0.5"
 
 
 @dataclass

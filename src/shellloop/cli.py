@@ -67,7 +67,7 @@ def main(
     except ValueError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(2)
-    if not DockerEnvironment.available():
+    if not DockerEnvironment.available(run_config.sandbox_image):
         typer.echo("Error: Docker is required. Shellloop never falls back to host command execution.", err=True)
         raise typer.Exit(2)
     if run_config.confirm:

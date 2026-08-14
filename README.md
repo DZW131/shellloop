@@ -7,7 +7,7 @@ without handing an AI unrestricted control of their computer.
 
 ```text
 natural-language task → Plan → Act → Observe → Verify → live evidence
-natural-language improvement → candidate workflow → tests + A/B evidence → user approval
+natural-language improvement → candidate workflow → tests + evaluation suite → versioned approval
 ```
 
 ## What makes it different
@@ -28,10 +28,12 @@ natural-language improvement → candidate workflow → tests + A/B evidence →
   can reshape the explicit workflow but cannot write the active Harness
   directly.
 - **Evidence before change** — the candidate is verified in Docker. Only after
-  a passing test gate can it be approved. An optional same-task A/B run compares
-  the current and candidate Harness using success, steps, failed commands,
-  verification count, and duration. The previous config is preserved under
-  `artifacts/studio/harness-history/`.
+  a passing test gate can it be approved. A real multi-task A/B suite checks
+  generated artifacts with deterministic commands and compares success, steps,
+  failed commands, verification count, and duration.
+- **Auditable and reversible** — every applied, restored, or externally edited
+  Harness receives a timestamp, source, parent version, and fingerprint. An old
+  version can only return through a fresh candidate, test, and approval cycle.
 
 Shellloop reports observable execution facts, not hidden model reasoning. It
 does not display API keys, environment variables, full model transcripts, or
@@ -42,17 +44,18 @@ tool-output bodies in its teaching trace.
 ### Prerequisites
 
 1. Python 3.10 or newer.
-2. Docker Desktop (Windows/macOS) or Docker Engine (Linux), running locally.
+2. Docker Desktop (Windows/macOS) or Docker Engine (Linux) for Agent execution.
 3. An Ollama Cloud API key or an OpenAI-compatible API key.
 
-Docker is a deliberate requirement: if it is unavailable, Studio stays in
+Docker is a deliberate execution requirement, not a UI requirement. If its
+engine or the sandbox image is unavailable, the launchers still open Studio in
 preview-only mode and the CLI refuses to execute a model command on the host.
 
 ### Windows
 
 Clone or download the repository, then double-click `start.bat`. On first run
 it creates `.venv`, installs Python dependencies, builds
-`shellloop-sandbox:0.4`, and opens:
+`shellloop-sandbox:0.5` when Docker is ready, and opens:
 
 ```text
 http://127.0.0.1:8765
@@ -117,13 +120,22 @@ edits, credentials, or new capabilities.
 Click **在 Docker 中验证** to run the existing Python tests in a disposable
 candidate workspace. After a green result, **批准并应用** becomes available.
 That confirmation is the only route that writes the new `harness.yaml` to the
-active project; the old configuration is saved in history first.
+active project. A stale proposal is rejected if the active Harness changed
+after the proposal was created.
 
-Before approval, enter a private evaluation task and click **运行当前版与候选版**
-to gather same-task A/B evidence. Those evaluation workspaces are deleted when
-the comparison finishes, and the task is not written to the proposal history.
-One stochastic comparison is evidence rather than proof, so important changes
-should be repeated on several representative tasks.
+Select cases from [`evaluations.yaml`](evaluations.yaml), then click
+**运行当前版与候选版**. Each version receives a separate temporary workspace.
+The page streams case, variant, Agent, sandbox, verification, and deterministic
+task-check events while the suite runs. Generated files, raw messages, and task
+outputs are destroyed when each evaluation exits. An optional private task can
+be added for observation, but it has no saved deterministic checker.
+Because the model may repeat that task in a visible response preview, never put
+credentials or sensitive material in a private evaluation task.
+
+The version timeline lists the active revision and earlier fingerprints. A
+restore action creates a normal candidate; it never bypasses Docker tests or
+the final approval click. A small stochastic suite is evidence rather than
+proof, so important releases should repeat it with representative cases.
 
 ## Harness configuration
 
@@ -145,6 +157,14 @@ its consequence, and roll it back. Later versions can add capabilities through
 new explicit, tested fields rather than granting a model unconstrained host
 access.
 
+## Evaluation suite
+
+[`evaluations.yaml`](evaluations.yaml) contains up to eight versioned teaching
+cases. Each case has a private execution task and a public description; a
+single-line `check_command` verifies the result inside the same disposable
+Docker workspace. Studio sends descriptions—not task bodies or checker
+commands—to the browser. A comparison can select at most six cases per run.
+
 ## Command line
 
 The Studio is the recommended interface:
@@ -157,7 +177,7 @@ For scripted API-backed runs, build the sandbox image first and configure a
 key in the environment:
 
 ```powershell
-docker build -t shellloop-sandbox:0.4 -f Dockerfile.sandbox .
+docker build -t shellloop-sandbox:0.5 -f Dockerfile.sandbox .
 $env:OLLAMA_API_KEY = "your_api_key"
 shellloop --provider ollama-cloud --api-base https://ollama.com/api --model gpt-oss:120b-cloud --task "List project files and finish correctly" --output artifacts/run.traj.json
 ```
@@ -198,8 +218,9 @@ src/shellloop/
   agents/          Observable Agent control loop
   environments/    Docker-only product execution environment
   harness.py       User-approvable Harness configuration
-  evaluation.py    Privacy-preserving run metrics and A/B conclusions
+  evaluation.py    Checked evaluation suites and aggregate A/B evidence
   proposals.py     Constrained natural-language change proposals
+  versions.py      Auditable Harness versions and active revision pointer
   studio.py        Local API and server-sent event service
   studio_static/   Runtime Observatory and Evolution Workbench pages
   tracing.py       Safe lifecycle event formatting
@@ -207,15 +228,16 @@ src/shellloop/
 tests/             Offline unit, CLI, sandbox, proposal, and Studio tests
 Dockerfile.sandbox Isolated command-runner image
 harness.yaml       Active, versionable Harness configuration
+evaluations.yaml   Versioned deterministic teaching evaluation cases
 ```
 
 ## Roadmap
 
 1. Current: local Studio, phased factual runtime trace, Docker sessions,
-   constrained workflow proposals, verification/retry behavior, same-task A/B
-   evidence, and user approval.
-2. Next: reusable evaluation suites, repeated comparisons, replay, and
-   configurable safe tool policies.
+   constrained workflow proposals, verification/retry behavior, checked
+   multi-case A/B evidence, version history, guarded restore, and user approval.
+2. Next: repeated-trial statistics, trajectory replay, and configurable safe
+   tool policies.
 3. Later: explicit capability packs for planning, memory, browser tools,
    multiple agents, and broader code evolution — each introduced as a visible,
    tested, reversible Harness capability.

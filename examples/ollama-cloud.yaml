@@ -6,4 +6,4 @@ output_path: artifacts/ollama-cloud.traj.json
 model_provider: ollama-cloud
 model_name: gpt-oss:120b-cloud
 api_base: https://ollama.com/api
-sandbox_image: shellloop-sandbox:0.4
+sandbox_image: shellloop-sandbox:0.5

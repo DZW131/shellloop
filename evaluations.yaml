@@ -1,0 +1,22 @@
+cases:
+  - id: exact_artifact
+    title: 创建精确结果文件
+    description: 检验 Agent 能否理解文件任务、执行命令并正确结束。
+    task: >-
+      Create a file named shellloop_evaluation_result.txt whose entire content is exactly
+      SHELLLOOP_EVALUATION_OK followed by one newline, then finish the task.
+    check_command: test "$(cat shellloop_evaluation_result.txt)" = "SHELLLOOP_EVALUATION_OK"
+  - id: inspect_project
+    title: 读取项目事实
+    description: 检验 Agent 能否检查现有项目并把可验证事实写入结果文件。
+    task: >-
+      Read pyproject.toml, determine the Python project name, write only that name followed by
+      one newline to shellloop_project_name.txt, then finish the task.
+    check_command: test "$(cat shellloop_project_name.txt)" = "shellloop"
+  - id: small_python_change
+    title: 完成小型 Python 改造
+    description: 检验 Agent 能否创建可执行代码并通过确定性行为检查。
+    task: >-
+      Create evaluation_math.py containing a function add(a, b) that returns the sum of its
+      arguments. Do not change existing project files. Then finish the task.
+    check_command: python -c "from evaluation_math import add; assert add(2, 5) == 7 and add(-1, 1) == 0"

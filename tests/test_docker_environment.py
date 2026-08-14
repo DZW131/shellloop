@@ -1,25 +1,44 @@
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from shellloop.environments.docker import DockerEnvironment
 
 
 class AvailableDockerEnvironment(DockerEnvironment):
     @staticmethod
-    def available() -> bool:
+    def available(image: str | None = None) -> bool:
         return True
 
 
 class UnavailableDockerEnvironment(DockerEnvironment):
     @staticmethod
-    def available() -> bool:
+    def available(image: str | None = None) -> bool:
         return False
 
 
 class BrokenDockerEnvironment(DockerEnvironment):
     @staticmethod
-    def available() -> bool:
+    def available(image: str | None = None) -> bool:
         return True
+
+
+@pytest.mark.parametrize(
+    ("returncodes", "image", "expected"),
+    [([1], None, False), ([0], None, True), ([0, 1], "shellloop:test", False), ([0, 0], "shellloop:test", True)],
+)
+def test_docker_availability_requires_a_live_engine_and_requested_image(
+    returncodes: list[int], image: str | None, expected: bool, monkeypatch: pytest.MonkeyPatch
+):
+    results = iter(returncodes)
+    monkeypatch.setattr("shellloop.environments.docker.shutil.which", lambda command: "docker")
+    monkeypatch.setattr(
+        "shellloop.environments.docker.subprocess.run",
+        lambda command, **kwargs: subprocess.CompletedProcess(command, next(results)),
+    )
+
+    assert DockerEnvironment.available(image) is expected
 
 
 def test_docker_environment_uses_a_restricted_container(tmp_path: Path):
