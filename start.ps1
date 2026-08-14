@@ -27,8 +27,16 @@ try {
         }
     }
 
-    & $taskPython -c "import shellloop, typer, yaml" 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    $taskImportPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $taskPython -c "import shellloop, typer, yaml" 2>$null
+        $taskImportExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $taskImportPreference
+    }
+    if ($taskImportExitCode -ne 0) {
         & $taskPython -m pip install -e ".[dev]"
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to install Shellloop dependencies."
