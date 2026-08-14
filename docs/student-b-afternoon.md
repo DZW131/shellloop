@@ -155,4 +155,3 @@ shellloop inspect artifacts/demo.traj.json
 2. 错误信息是否泄露完整 trajectory 内容？
 3. inspect 是否只读取文件而不执行其中任何命令？
 4. README 示例是否与实际 CLI 完全一致？
-

@@ -147,4 +147,3 @@ ruff format --check src tests
 2. 格式错误时是否真的不会产生 action？
 3. fake transport 是否保证测试没有网络依赖？
 4. 是否意外修改了不属于模型层的模块？
-
