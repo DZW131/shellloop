@@ -2,6 +2,7 @@
 
 import json
 import os
+from dataclasses import replace
 from pathlib import Path
 
 import typer
@@ -10,6 +11,7 @@ from shellloop.agents import DefaultAgent
 from shellloop.config import RunConfig, build_run_config, load_config, serialize_config
 from shellloop.core import Model
 from shellloop.environments import DockerEnvironment
+from shellloop.harness import effective_system_prompt, load_harness
 from shellloop.inspect import summarize_trajectory
 from shellloop.models import OllamaCloudModel, OpenAICompatibleModel
 from shellloop.models.ollama_cloud import OllamaCloudError
@@ -43,8 +45,9 @@ def main(
     if task is None:
         raise typer.BadParameter("--task is required to run the agent loop.")
 
+    config_values = load_config(config)
     run_config = build_run_config(
-        load_config(config),
+        config_values,
         output_path=output,
         max_steps=max_steps,
         confirm=False if yolo else None,
@@ -52,6 +55,12 @@ def main(
         model_name=model,
         api_base=api_base,
         sandbox_image=sandbox_image,
+    )
+    harness = load_harness(run_config.workspace / "harness.yaml")
+    run_config = replace(
+        run_config,
+        max_steps=harness.max_steps if max_steps is None and "max_steps" not in config_values else run_config.max_steps,
+        timeout=harness.timeout if "timeout" not in config_values else run_config.timeout,
     )
     try:
         selected_model = _build_model(run_config, _api_key(run_config))
@@ -70,6 +79,9 @@ def main(
         DockerEnvironment(session, run_config.timeout, run_config.sandbox_image),
         run_config.max_steps,
         CallbackTraceSink(lambda event: typer.echo(format_trace_event(event))) if trace else None,
+        system_prompt=effective_system_prompt(harness),
+        verification_command=harness.verification_command if harness.verification_enabled else None,
+        verification_retries=harness.verification_retries,
     )
     try:
         result = agent.run(task)

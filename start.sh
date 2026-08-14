@@ -17,5 +17,5 @@ if [ ! -x "$task_python" ]; then
 fi
 
 "$task_python" -c "import shellloop, typer, yaml" >/dev/null 2>&1 || "$task_python" -m pip install -e '.[dev]'
-docker build -t shellloop-sandbox:0.3 -f Dockerfile.sandbox .
+docker build -t shellloop-sandbox:0.4 -f Dockerfile.sandbox .
 exec "$task_python" -m shellloop studio

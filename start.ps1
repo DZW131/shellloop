@@ -43,7 +43,7 @@ try {
     }
 
     Write-Host "Building the isolated Shellloop sandbox image..."
-    & docker build -t shellloop-sandbox:0.3 -f Dockerfile.sandbox .
+    & docker build -t shellloop-sandbox:0.4 -f Dockerfile.sandbox .
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to build the Docker sandbox image."
     }

@@ -18,13 +18,16 @@ before and after observable control-flow boundaries:
 
 ```text
 run_started → model_request → model_response → action_selected
-→ command_finished → run_finished
+→ command_finished → verification_started → verification_finished → run_finished
 ```
 
-The event payload contains a step, a short summary, a bounded command preview,
-and selected execution metadata such as return code and completion status. It
-does not contain task text, API keys, environment variables, model transcripts,
-or command output bodies.
+The event payload contains a step, phase, short summary, timing, bounded and
+redacted previews, return code, line count, and completion status. The browser
+organizes these facts into Agent, model, sandbox, and verification lanes. It
+does not receive the submitted task as a dedicated event field, API keys,
+environment variables, full model transcripts, or full command-output bodies.
+Because a model can repeat user input in its visible response, tasks must never
+contain credentials or other material that is unsafe to show in a classroom.
 
 The Studio server augments events with sequence number and timestamp, streams
 them with Server-Sent Events, and saves them with the trajectory. The Runtime
@@ -55,12 +58,27 @@ API with a JSON-only contract. The only accepted update keys are:
 system_prompt
 max_steps
 timeout
+visible_planning
+verification_enabled
+verification_command
+verification_retries
 ```
 
 `HarnessProposal` retains a current spec and a candidate spec in memory. It
 does not retain the request text or API key. Verification writes the candidate
 configuration only into a fresh Docker session and runs the project's test
 command there. A non-zero result disables application.
+
+The workflow fields produce an explicit `Understand → Plan → Act → Observe →
+Verify → Retry → Finish` graph. Disabled stages remain visible as skipped nodes
+so a beginner can see that changing configuration changes actual control flow,
+not just text on a screen.
+
+An optional comparison runs the current and candidate specs on the same task in
+separate temporary workspaces. It reports safe aggregate metrics and a cautious
+single-run conclusion. The task, messages, generated files, and raw outputs are
+discarded when each comparison run exits. This complements the deterministic
+test gate; it never replaces it.
 
 When a user explicitly presses **批准并应用**, Studio saves the old
 `harness.yaml` into `artifacts/studio/harness-history/` and writes the verified

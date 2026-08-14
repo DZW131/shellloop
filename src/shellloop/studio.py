@@ -10,21 +10,23 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
 
 from shellloop.agents import DefaultAgent
-from shellloop.config import RunConfig, serialize_config
+from shellloop.config import SANDBOX_IMAGE, RunConfig, serialize_config
 from shellloop.environments import DockerEnvironment
-from shellloop.harness import HarnessSpec, load_harness, save_harness, spec_data
+from shellloop.evaluation import comparison_data, run_metrics
+from shellloop.harness import HarnessSpec, effective_system_prompt, flow_data, load_harness, save_harness, spec_data
 from shellloop.models import OllamaCloudModel, OpenAICompatibleModel
 from shellloop.models.ollama_cloud import OllamaCloudError
 from shellloop.models.openai_compatible import OpenAIModelError
 from shellloop.models.text_actions import TextActionFormatError
 from shellloop.proposals import HarnessProposal, generate_proposal, proposal_data
 from shellloop.serialize import save_trajectory
-from shellloop.sessions import create_session_workspace
+from shellloop.sessions import create_session_workspace, temporary_session_workspace
 
 _STATIC_ROOT = (Path(__file__).parent / "studio_static").resolve()
 
@@ -39,6 +41,8 @@ class StudioRun:
         self.error: str | None = None
         self.running = True
         self.condition = threading.Condition()
+        self._started = perf_counter()
+        self.duration_ms: int | None = None
 
     def emit(self, event: dict[str, Any]) -> None:
         with self.condition:
@@ -56,6 +60,7 @@ class StudioRun:
             self.result = result
             self.error = error
             self.running = False
+            self.duration_ms = round((perf_counter() - self._started) * 1000)
             self.condition.notify_all()
 
     def snapshot(self) -> dict[str, Any]:
@@ -66,6 +71,9 @@ class StudioRun:
                 "result": self.result,
                 "error": self.error,
                 "event_count": len(self.events),
+                "metrics": run_metrics(self.result, self.events, self.duration_ms)
+                if self.result is not None and self.duration_ms is not None
+                else None,
             }
 
 
@@ -83,6 +91,7 @@ class StudioService:
         return {
             "sandbox_available": DockerEnvironment.available(),
             "harness": spec_data(load_harness(self.harness_path)),
+            "harness_flow": flow_data(load_harness(self.harness_path)),
             "runtime_url": "/runtime.html",
             "evolution_url": "/evolution.html",
         }
@@ -114,10 +123,24 @@ class StudioService:
         output_path = self.root / "artifacts" / "studio" / f"verify-{proposal.id}.traj.json"
         session = create_session_workspace(self.root, output_path)
         save_harness(session / "harness.yaml", proposal.candidate)
-        result = DockerEnvironment(session, proposal.candidate.timeout, "shellloop-sandbox:0.3").execute(
+        result = DockerEnvironment(session, proposal.candidate.timeout, SANDBOX_IMAGE).execute(
             {"command": "python -m pytest -q"}
         )
         proposal.verification_returncode = int(result["returncode"])
+        proposal.verification_duration_ms = int(result["duration_ms"])
+        return proposal
+
+    def compare_proposal(self, proposal_id: str, values: dict[str, Any]) -> HarnessProposal:
+        """Run current and candidate Harnesses on one undisclosed evaluation task."""
+        proposal = self._proposal(proposal_id)
+        if not DockerEnvironment.available():
+            raise ValueError("Docker is unavailable. Harness comparison cannot run.")
+        task = _required_text(values, "evaluation_task")
+        model = _build_model(values)
+        proposal.comparison = comparison_data(
+            self._evaluate_spec(model, task, proposal.current),
+            self._evaluate_spec(model, task, proposal.candidate),
+        )
         return proposal
 
     def apply_proposal(self, proposal_id: str) -> HarnessProposal:
@@ -137,17 +160,44 @@ class StudioService:
         except KeyError as error:
             raise ValueError("proposal not found") from error
 
+    def _evaluate_spec(self, model: Any, task: str, spec: HarnessSpec) -> dict[str, Any]:
+        with temporary_session_workspace(self.root) as session:
+            agent = DefaultAgent(
+                model,
+                DockerEnvironment(session, spec.timeout, SANDBOX_IMAGE),
+                spec.max_steps,
+                system_prompt=effective_system_prompt(spec),
+                verification_command=spec.verification_command if spec.verification_enabled else None,
+                verification_retries=spec.verification_retries,
+            )
+            started = perf_counter()
+            result = agent.run(task)
+            duration_ms = round((perf_counter() - started) * 1000)
+            return run_metrics(result, agent.events, duration_ms)
+
     def _run_agent(self, run: StudioRun, task: str, model: Any, spec: HarnessSpec) -> None:
         output_path = self.root / "artifacts" / "studio" / "runs" / f"{run.id}.traj.json"
         try:
             session = create_session_workspace(self.root, output_path)
-            run.emit({"event": "sandbox_prepared", "step": 0, "summary": "disposable Docker session prepared"})
+            run.emit(
+                {
+                    "event": "sandbox_prepared",
+                    "step": 0,
+                    "summary": "disposable Docker session prepared",
+                    "phase": "sandbox",
+                    "network": "disabled",
+                    "image": SANDBOX_IMAGE,
+                    "harness_flow": flow_data(spec),
+                }
+            )
             agent = DefaultAgent(
                 model,
-                DockerEnvironment(session, spec.timeout, "shellloop-sandbox:0.3"),
+                DockerEnvironment(session, spec.timeout, SANDBOX_IMAGE),
                 spec.max_steps,
                 trace_sink=run,
-                system_prompt=spec.system_prompt,
+                system_prompt=effective_system_prompt(spec),
+                verification_command=spec.verification_command if spec.verification_enabled else None,
+                verification_retries=spec.verification_retries,
             )
             result = agent.run(task)
             save_trajectory(
@@ -161,6 +211,7 @@ class StudioService:
                         timeout=spec.timeout,
                         model_provider=str(getattr(model, "_provider", "configured-api")),
                         model_name=str(getattr(model, "_model_name", "configured-model")),
+                        api_base=str(getattr(model, "_api_base", "configured-api")),
                     )
                 ),
                 events=run.events,
@@ -227,12 +278,20 @@ class _StudioHandler(BaseHTTPRequestHandler):
             if path.startswith("/api/proposals/") and path.endswith("/verify"):
                 self._json(HTTPStatus.OK, proposal_data(self.server.service.verify_proposal(path.split("/")[3])))
                 return
+            if path.startswith("/api/proposals/") and path.endswith("/compare"):
+                self._json(
+                    HTTPStatus.OK,
+                    proposal_data(self.server.service.compare_proposal(path.split("/")[3], values)),
+                )
+                return
             if path.startswith("/api/proposals/") and path.endswith("/apply"):
                 self._json(HTTPStatus.OK, proposal_data(self.server.service.apply_proposal(path.split("/")[3])))
                 return
             self._json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
         except (TypeError, ValueError) as error:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+        except (OllamaCloudError, OpenAIModelError, TextActionFormatError) as error:
+            self._json(HTTPStatus.BAD_GATEWAY, {"error": str(error)})
 
     def _run_snapshot(self, run_id: str) -> None:
         run = self.server.service.runs.get(run_id)

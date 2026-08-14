@@ -1,0 +1,49 @@
+from shellloop.evaluation import comparison_data, run_metrics
+
+
+def test_run_metrics_exposes_behavior_without_messages_or_task_content():
+    metrics = run_metrics(
+        {"exit_status": "Submitted", "steps": 2},
+        [
+            {"event": "model_response", "step": 1},
+            {"event": "command_finished", "step": 1, "returncode": 1},
+            {"event": "model_response", "step": 2},
+            {"event": "command_finished", "step": 2, "returncode": 0},
+            {"event": "verification_finished", "step": 2, "returncode": 0},
+        ],
+        1250,
+    )
+
+    assert metrics == {
+        "exit_status": "Submitted",
+        "success": True,
+        "steps": 2,
+        "model_calls": 2,
+        "command_count": 2,
+        "failed_command_count": 1,
+        "verification_count": 1,
+        "duration_ms": 1250,
+    }
+    assert "task" not in metrics
+    assert "messages" not in metrics
+
+
+def test_comparison_reports_deltas_and_keeps_single_run_caution():
+    baseline = {
+        "success": False,
+        "steps": 4,
+        "failed_command_count": 2,
+        "duration_ms": 5000,
+    }
+    candidate = {
+        "success": True,
+        "steps": 3,
+        "failed_command_count": 0,
+        "duration_ms": 4000,
+    }
+
+    comparison = comparison_data(baseline, candidate)
+
+    assert comparison["conclusion"] == "candidate_succeeded_where_baseline_failed"
+    assert comparison["delta"] == {"steps": -1, "failed_command_count": -2, "duration_ms": -1000}
+    assert "not proof" in comparison["caution"]

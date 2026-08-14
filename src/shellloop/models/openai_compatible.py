@@ -73,6 +73,7 @@ class OpenAICompatibleModel:
         transport: Transport | None = None,
     ) -> None:
         self._api_base = api_base.rstrip("/")
+        self._provider = "openai-compatible"
         self._model_name = model_name
         self._api_key = api_key
         self._transport = transport if transport is not None else UrllibJsonTransport()

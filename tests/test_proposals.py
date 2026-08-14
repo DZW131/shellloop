@@ -15,13 +15,24 @@ class FixedCompletion:
 
 
 def test_generates_a_constrained_proposal_from_json_only_model_output():
-    model = FixedCompletion('{"summary":"Use a shorter teaching loop.","changes":{"max_steps":4,"timeout":45}}')
+    model = FixedCompletion(
+        '{"summary":"Use a shorter teaching loop.","changes":{"max_steps":4,"timeout":45,'
+        '"visible_planning":false,"verification_retries":2}}'
+    )
 
     proposal = generate_proposal(model, "Make the loop easier to observe", HarnessSpec())
 
     assert proposal.candidate.max_steps == 4
     assert proposal.candidate.timeout == 45
+    assert proposal.candidate.visible_planning is False
     assert proposal_data(proposal)["verified"] is False
+    assert set(proposal_data(proposal)["changed_fields"]) == {
+        "max_steps",
+        "timeout",
+        "visible_planning",
+        "verification_retries",
+    }
+    assert proposal_data(proposal)["candidate_flow"][1]["enabled"] is False
     assert "Make the loop easier" not in str(proposal_data(proposal))
     assert model.messages[0]["role"] == "system"
 

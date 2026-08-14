@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+SANDBOX_IMAGE = "shellloop-sandbox:0.4"
+
 
 @dataclass
 class RunConfig:
@@ -17,7 +19,7 @@ class RunConfig:
     model_provider: str = "ollama-cloud"
     model_name: str | None = None
     api_base: str = "https://ollama.com/api"
-    sandbox_image: str = "shellloop-sandbox:0.3"
+    sandbox_image: str = SANDBOX_IMAGE
 
 
 def load_config(path: Path | None) -> dict[str, Any]:
@@ -52,9 +54,7 @@ def build_run_config(
         api_base=api_base
         if api_base is not None
         else str(values.get("api_base", values.get("ollama_base", "https://ollama.com/api"))),
-        sandbox_image=sandbox_image
-        if sandbox_image is not None
-        else str(values.get("sandbox_image", "shellloop-sandbox:0.3")),
+        sandbox_image=sandbox_image if sandbox_image is not None else str(values.get("sandbox_image", SANDBOX_IMAGE)),
     )
 
 

@@ -79,3 +79,37 @@ def test_agent_records_safe_lifecycle_events(tmp_path: Path):
     ]
     assert agent.events[3]["command"] == "echo SHELLLOOP_DONE && echo complete"
     assert "should not be stored" not in str(agent.events)
+
+
+def test_agent_verifies_completion_before_submitting(tmp_path: Path):
+    agent = DefaultAgent(
+        FixedModel([response("echo SHELLLOOP_DONE && echo complete")]),
+        LocalEnvironment(tmp_path, 3),
+        max_steps=1,
+        verification_command=f'"{sys.executable}" -c "print(\'verified\')"',
+    )
+
+    assert agent.run("Finish and verify")["exit_status"] == "Submitted"
+    assert [event["event"] for event in agent.events][-3:] == [
+        "verification_started",
+        "verification_finished",
+        "run_finished",
+    ]
+    assert agent.messages[-1]["extra"]["verification"] is True
+
+
+def test_agent_reports_verification_failure_after_bounded_retries(tmp_path: Path):
+    agent = DefaultAgent(
+        FixedModel([response("echo SHELLLOOP_DONE"), response("echo SHELLLOOP_DONE")]),
+        LocalEnvironment(tmp_path, 3),
+        max_steps=2,
+        verification_command=f'"{sys.executable}" -c "import sys; sys.exit(2)"',
+        verification_retries=1,
+    )
+
+    assert agent.run("Try verification twice") == {
+        "exit_status": "VerificationFailed",
+        "submission": "",
+        "steps": 2,
+    }
+    assert sum(event["event"] == "verification_finished" for event in agent.events) == 2

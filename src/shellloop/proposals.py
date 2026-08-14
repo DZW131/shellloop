@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from uuid import uuid4
 
 from shellloop.core import Message
-from shellloop.harness import HarnessSpec, update_harness
+from shellloop.harness import HarnessSpec, flow_data, update_harness
 
 
 class CompletionModel(Protocol):
@@ -26,7 +26,9 @@ class HarnessProposal:
     candidate: HarnessSpec
     id: str = field(default_factory=lambda: uuid4().hex)
     verification_returncode: int | None = None
+    verification_duration_ms: int | None = None
     applied: bool = False
+    comparison: dict[str, Any] | None = None
 
     @property
     def verified(self) -> bool:
@@ -41,8 +43,10 @@ def generate_proposal(model: CompletionModel, request: str, current: HarnessSpec
                 "role": "system",
                 "content": (
                     "You improve a beginner-friendly Agent Harness. Return JSON only with a concise summary and a "
-                    "changes object. The only allowed keys are system_prompt, max_steps, and timeout. Do not "
-                    "include API keys, commands, file paths, markdown, or extra keys."
+                    "changes object. The only allowed keys are system_prompt, max_steps, timeout, visible_planning, "
+                    "verification_enabled, verification_command, and verification_retries. The verification command "
+                    "runs only in a disposable Docker workspace. Do not include API keys, file paths, markdown, or "
+                    "extra keys."
                 ),
             },
             {
@@ -65,14 +69,24 @@ def generate_proposal(model: CompletionModel, request: str, current: HarnessSpec
 
 def proposal_data(proposal: HarnessProposal) -> dict[str, Any]:
     """Return the safe, displayable proposal state without request or credential data."""
+    current = asdict(proposal.current)
+    candidate = asdict(proposal.candidate)
     return {
         "id": proposal.id,
         "summary": proposal.summary,
-        "current": asdict(proposal.current),
-        "candidate": asdict(proposal.candidate),
+        "current": current,
+        "candidate": candidate,
+        "changed_fields": [key for key in current if current[key] != candidate[key]],
+        "current_flow": flow_data(proposal.current),
+        "candidate_flow": flow_data(proposal.candidate),
         "verified": proposal.verified,
-        "verification_returncode": proposal.verification_returncode,
+        "verification": {
+            "returncode": proposal.verification_returncode,
+            "duration_ms": proposal.verification_duration_ms,
+            "command": proposal.candidate.verification_command,
+        },
         "applied": proposal.applied,
+        "comparison": proposal.comparison,
     }
 
 

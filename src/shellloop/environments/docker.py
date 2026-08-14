@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from time import perf_counter
 
 from shellloop.core import Action, Output
 
@@ -35,8 +36,10 @@ class DockerEnvironment:
                 "output": "",
                 "returncode": -2,
                 "exception_info": "Docker is required for Shellloop sandbox execution.",
+                "duration_ms": 0,
             }
         command = action.get("command", "")
+        started = perf_counter()
         try:
             result = self._runner(
                 [
@@ -88,6 +91,8 @@ class DockerEnvironment:
                 "returncode": -2,
                 "exception_info": "Docker sandbox execution is unavailable.",
             }
+
+        output["duration_ms"] = round((perf_counter() - started) * 1000)
 
         lines = output["output"].lstrip().splitlines(keepends=True)
         if output["returncode"] == 0 and lines and lines[0].strip() == "SHELLLOOP_DONE":

@@ -1,19 +1,28 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>运行观测台 · Shellloop Studio</title><link rel="stylesheet" href="style.css"></head>
+  <head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>运行观测台 · Shellloop Studio</title><link rel="stylesheet" href="style.css">
+  </head>
   <body>
     <header class="topbar"><div class="brand"><span class="brand-mark">S/</span>运行观测台</div><nav class="nav"><a href="index.html">概览</a><a class="active" href="runtime.html">运行观测台</a><a href="evolution.html">演化工作台</a></nav></header>
     <main>
-      <p class="eyebrow">Runtime Observatory</p><h1>每一个真实状态，都能被看见。</h1><p class="lead">模型 API 在本地 Studio 进程中调用；模型生成的命令只会进入一次性、无网络的 Docker 会话副本。</p>
+      <p class="eyebrow">Runtime Observatory</p><h1>从意图到验证，每一个事实状态都能被看见。</h1>
+      <p class="lead">可见计划、模型延迟、动作解析、沙箱返回码、脱敏输出预览和验证结果来自同一事件流；隐藏推理与密钥不会进入页面。</p>
       <div class="status-row" id="sandbox-status"></div>
+      <section class="metric-strip" id="metric-strip">
+        <div class="metric"><small>运行状态</small><b>等待任务</b></div><div class="metric"><small>模型调用</small><b>0</b></div><div class="metric"><small>沙箱命令</small><b>0</b></div><div class="metric"><small>失败命令</small><b>0</b></div><div class="metric"><small>总耗时</small><b>—</b></div>
+      </section>
+      <section class="phase-rail" id="phase-rail"><div data-phase="agent"><span>01</span>Agent 控制</div><div data-phase="model"><span>02</span>模型交互</div><div data-phase="sandbox"><span>03</span>沙箱执行</div><div data-phase="verification"><span>04</span>结果验证</div></section>
+      <section class="workflow-rail" id="workflow-rail"></section>
       <section class="grid runtime">
         <form class="panel" id="run-form"><div class="panel-head"><h2>开始隔离运行</h2><span>密钥仅用于本次请求</span></div>
           <label>Provider<select id="provider"><option value="ollama-cloud">Ollama Cloud</option><option value="openai-compatible">OpenAI-compatible</option></select></label>
-          <label>API Base<input id="api-base" value="https://ollama.com/api" required></label><label>Model<input id="model" placeholder="例如 gpt-oss:120b-cloud" required></label><label>API Key<input id="api-key" type="password" autocomplete="off" required></label><label>任务<textarea id="task" placeholder="例如：检查当前项目的测试，并只执行一个安全的诊断命令。" required></textarea></label>
-          <button class="button" id="run-button">启动受限运行</button><p class="hint">不会使用宿主机 shell；没有 Docker 时按钮不可用。</p><p class="message" id="run-message"></p>
+          <label>API Base<input id="api-base" value="https://ollama.com/api" required></label><label>Model<input id="model" placeholder="例如 gpt-oss:120b-cloud" required></label><label>API Key<input id="api-key" type="password" autocomplete="off" required></label><label>任务<textarea id="task" placeholder="例如：检查当前项目，修复一个失败测试，并在完成后验证。" required></textarea></label>
+          <button class="button" id="run-button">启动受限运行</button><p class="hint">模型命令只能修改一次性会话副本；没有 Docker 时按钮不可用。</p><p class="message" id="run-message"></p>
         </form>
-        <section class="panel timeline-panel"><div class="panel-head"><h2>事实事件时间线</h2><span id="event-count">尚未开始</span></div><div class="timeline" id="timeline"><div class="empty">提交一个真实 API 任务后，事件会在这里实时出现。</div></div></section>
-        <aside class="panel"><div class="panel-head"><h2>当前状态</h2><span>只读摘要</span></div><div class="state-list" id="state-list"><div class="state"><small>运行</small><b>等待任务</b></div><div class="state"><small>沙箱</small><b>尚未创建</b></div><div class="state"><small>最后事件</small><b>—</b></div></div></aside>
+        <section class="panel timeline-panel"><div class="panel-head"><h2>实时事实时间线</h2><span id="event-count">尚未开始</span></div><div class="timeline" id="timeline"><div class="empty">运行开始后，结构化事件会按发生顺序进入这里。</div></div></section>
+        <aside class="panel"><div class="panel-head"><h2>事件检查器</h2><span>点击时间线事件</span></div><div class="state-list" id="state-list"><div class="state"><small>运行</small><b>等待任务</b></div><div class="state"><small>沙箱</small><b>尚未创建</b></div><div class="state"><small>最后事件</small><b>—</b></div></div><div class="event-detail" id="event-detail"><p class="hint">这里会解释当前选中事件的安全字段。</p></div></aside>
       </section>
     </main><script src="runtime.js"></script>
   </body>

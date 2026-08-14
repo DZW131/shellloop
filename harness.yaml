@@ -6,3 +6,7 @@ system_prompt: >-
   SHELLLOOP_DONE, then print a concise result on later lines.
 max_steps: 8
 timeout: 30
+visible_planning: true
+verification_enabled: true
+verification_command: python -m pytest -q
+verification_retries: 1

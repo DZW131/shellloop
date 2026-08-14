@@ -4,15 +4,21 @@
   <body>
     <header class="topbar"><div class="brand"><span class="brand-mark">S/</span>演化工作台</div><nav class="nav"><a href="index.html">概览</a><a href="runtime.html">运行观测台</a><a class="active" href="evolution.html">演化工作台</a></nav></header>
     <main>
-      <p class="eyebrow">Harness Evolution Workbench</p><h1>先提出证据，再批准改进。</h1><p class="lead">第一版只允许改动明确白名单中的 Harness 字段：系统提示词、最大步数和命令超时。模型不能直接写入活跃项目。</p>
-      <div class="flow" id="flow"><div class="flow-node active">自然语言需求</div><div class="flow-node">候选 Harness</div><div class="flow-node">Docker 验证</div><div class="flow-node">人工批准</div><div class="flow-node">新版本</div></div>
+      <p class="eyebrow">Harness Evolution Workbench</p><h1>看到参数改变，也看到流程怎样改变。</h1><p class="lead">候选版本可以受约束地改变可见计划、验证与重试流程；静态测试守住正确性，同任务 A/B 运行提供效果证据，最终仍由用户批准。</p>
+      <div class="flow" id="approval-flow"><div class="flow-node active">自然语言需求</div><div class="flow-node">候选 Harness</div><div class="flow-node">Docker 测试</div><div class="flow-node">A/B 证据</div><div class="flow-node">人工批准</div></div>
       <section class="grid evolution">
-        <form class="panel" id="proposal-form"><div class="panel-head"><h2>提出改进需求</h2><span>不会执行命令</span></div>
-          <label>Provider<select id="provider"><option value="ollama-cloud">Ollama Cloud</option><option value="openai-compatible">OpenAI-compatible</option></select></label><label>API Base<input id="api-base" value="https://ollama.com/api" required></label><label>Model<input id="model" placeholder="例如 gpt-oss:120b-cloud" required></label><label>API Key<input id="api-key" type="password" autocomplete="off" required></label><label>希望怎样改进 Harness？<textarea id="request" placeholder="例如：把系统提示词改得更适合初学者，并将最大步数限制得更保守。" required></textarea></label>
-          <button class="button" id="proposal-button">生成候选方案</button><p class="hint">密钥只在本次 API 请求中使用，浏览器不会本地保存。</p><p class="message" id="proposal-message"></p>
+        <form class="panel" id="proposal-form"><div class="panel-head"><h2>提出改进需求</h2><span>只修改白名单字段</span></div>
+          <label>Provider<select id="provider"><option value="ollama-cloud">Ollama Cloud</option><option value="openai-compatible">OpenAI-compatible</option></select></label><label>API Base<input id="api-base" value="https://ollama.com/api" required></label><label>Model<input id="model" placeholder="例如 gpt-oss:120b-cloud" required></label><label>API Key<input id="api-key" type="password" autocomplete="off" required></label><label>希望怎样改进 Harness？<textarea id="request" placeholder="例如：要求模型先给出可见计划，完成后运行测试；若验证失败，允许修复一次。" required></textarea></label>
+          <button class="button" id="proposal-button">生成候选方案</button><p class="hint">请求和密钥不会进入候选配置或版本历史。</p><p class="message" id="proposal-message"></p>
         </form>
-        <section class="panel"><div class="panel-head"><h2>改造对比与验证</h2><span id="proposal-status">等待候选方案</span></div><p class="proposal-summary" id="proposal-summary">当前 Harness 将在这里与候选版本对比。</p><div class="diff" id="diff"><div class="empty">先输入自然语言需求，生成受约束的候选改造。</div></div><div class="hero-actions" style="margin-top:1rem"><button class="button secondary" id="verify-button" disabled>在 Docker 中验证</button><button class="button success" id="apply-button" disabled>批准并应用</button></div></section>
+        <section class="panel"><div class="panel-head"><h2>配置差异</h2><span id="proposal-status">等待候选方案</span></div><p class="proposal-summary" id="proposal-summary">当前 Harness 将在这里与候选版本对比。</p><div class="diff" id="diff"><div class="empty">先用自然语言描述希望改变的 Harness 行为。</div></div></section>
       </section>
+      <section class="panel evolution-panel"><div class="panel-head"><h2>流程结构对比</h2><span>灰色节点会被跳过</span></div><div class="flow-compare"><div><h3>当前 Harness</h3><div class="workflow-rail vertical" id="current-flow"></div></div><div class="flow-arrow">→</div><div><h3>候选 Harness</h3><div class="workflow-rail vertical" id="candidate-flow"></div></div></div></section>
+      <section class="grid evidence-grid">
+        <section class="panel"><div class="panel-head"><h2>静态验证门禁</h2><span id="verification-status">尚未验证</span></div><div id="verification-evidence" class="empty compact">在候选副本中运行完整 pytest，测试通过后才能批准。</div><button class="button secondary" id="verify-button" disabled>在 Docker 中运行测试</button></section>
+        <section class="panel"><div class="panel-head"><h2>真实同任务 A/B 对比</h2><span>调用两次真实 Agent</span></div><label>评测任务<textarea id="evaluation-task" placeholder="输入一个能区分当前与候选 Harness 的任务。内容不会保存。"></textarea></label><button class="button secondary" id="compare-button" disabled>运行当前版与候选版</button><div id="comparison" class="empty compact">对比成功状态、步数、失败命令、验证次数与耗时。</div></section>
+      </section>
+      <section class="approval-bar"><div><b>最终采用仍由你决定</b><span>只有静态测试通过后，批准按钮才会解锁；A/B 单次结果只是证据，不是绝对证明。</span></div><button class="button success" id="apply-button" disabled>批准并应用候选 Harness</button></section>
     </main><script src="evolution.js"></script>
   </body>
 </html>
