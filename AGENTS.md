@@ -10,13 +10,16 @@ minimal architecture of mini-SWE-agent.
 - Local workspace execution
 - JSON trajectories
 - YAML configuration and a CLI
-- An offline scripted model
+- Real API-backed models and a local Studio web workbench
+- Docker-isolated Agent command execution and approved Harness configuration evolution
 
 ## Non-goals
 
 - Do not copy upstream source code verbatim.
-- Do not add model providers, container backends, benchmarks, or a UI unless an
-  issue explicitly asks for them.
+- Keep Studio local-only by default and bind only to 127.0.0.1.
+- Run model-generated commands only in the disposable Docker workspace; never
+  silently fall back to a host shell.
+- Keep Harness evolution constrained, tested, visible, and user-approved.
 - Do not add dependencies without approval.
 - Do not print or save secrets.
 - Do not run destructive commands or commands outside the configured workspace.

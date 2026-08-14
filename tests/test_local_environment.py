@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-from shellloop.environments import LocalEnvironment
+from shellloop.environments.local import LocalEnvironment
 
 
 def test_executes_command_and_returns_output(tmp_path: Path):

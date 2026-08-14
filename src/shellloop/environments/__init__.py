@@ -1,5 +1,5 @@
 """Execution environments."""
 
-from shellloop.environments.local import LocalEnvironment
+from shellloop.environments.docker import DockerEnvironment
 
-__all__ = ["LocalEnvironment"]
+__all__ = ["DockerEnvironment"]

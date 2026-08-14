@@ -1,17 +1,12 @@
 param(
-    [ValidateSet("menu", "offline", "cloud")]
-    [string]$Mode = "menu",
-    [string]$Task,
-    [string]$Model,
-    [string]$Output,
-    [switch]$Yes
+    [int]$Port = 8765,
+    [switch]$NoOpen
 )
 
 $ErrorActionPreference = "Stop"
 $taskRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $taskPython = Join-Path $taskRoot ".venv\Scripts\python.exe"
 $taskPreviousEncoding = $env:PYTHONIOENCODING
-$taskClearApiKey = $false
 $env:PYTHONIOENCODING = "utf-8"
 
 Push-Location $taskRoot
@@ -43,75 +38,26 @@ try {
         }
     }
 
-    if ($Mode -eq "menu") {
-        Write-Host ""
-        Write-Host "Shellloop Student Launcher"
-        Write-Host "1. Offline demo (no API key)"
-        Write-Host "2. Ollama Cloud (personal API key required)"
-        $taskChoice = Read-Host "Choose 1 or 2"
-        switch ($taskChoice) {
-            "1" { $Mode = "offline" }
-            "2" { $Mode = "cloud" }
-            default { throw "Enter 1 or 2." }
-        }
+    if ($null -eq (Get-Command docker -ErrorAction SilentlyContinue)) {
+        throw "Docker Desktop is required. Shellloop will not run Agent commands on this computer."
     }
 
-    if ([string]::IsNullOrWhiteSpace($Task)) {
-        $Task = Read-Host "Task"
-    }
-    if ([string]::IsNullOrWhiteSpace($Task)) {
-        throw "Task must not be empty."
-    }
-
-    if ($Mode -eq "cloud") {
-        if ([string]::IsNullOrWhiteSpace($Model)) {
-            $Model = Read-Host "Ollama model (Enter for gpt-oss:120b-cloud)"
-            if ([string]::IsNullOrWhiteSpace($Model)) {
-                $Model = "gpt-oss:120b-cloud"
-            }
-        }
-        if ([string]::IsNullOrWhiteSpace($env:OLLAMA_API_KEY)) {
-            $taskSecureKey = Read-Host "Ollama API Key (used only for this run)" -AsSecureString
-            $taskPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($taskSecureKey)
-            try {
-                $env:OLLAMA_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($taskPointer).Trim()
-            }
-            finally {
-                [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($taskPointer)
-            }
-            $taskClearApiKey = $true
-        }
+    Write-Host "Building the isolated Shellloop sandbox image..."
+    & docker build -t shellloop-sandbox:0.3 -f Dockerfile.sandbox .
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to build the Docker sandbox image."
     }
 
-    if (-not $Output) {
-        $Output = "artifacts/$Mode-$(Get-Date -Format 'yyyyMMdd-HHmmss').traj.json"
-    }
-    if (-not $Yes) {
-        Write-Warning "Shellloop will execute model-generated shell commands in this project directory."
-        if ((Read-Host "Run in an isolated teaching environment? Enter y to continue") -ne "y") {
-            return
-        }
-    }
-
-    $taskArguments = @("-m", "shellloop", "--task", $Task, "--output", $Output, "--yolo")
-    if ($Mode -eq "cloud") {
-        $taskArguments += @("--provider", "ollama-cloud", "--model", $Model)
+    Write-Host "Starting Shellloop Studio at http://127.0.0.1:$Port"
+    Write-Host "API keys are entered in the local browser and are never saved to disk."
+    $taskArguments = @("-m", "shellloop", "studio", "--port", $Port)
+    if ($NoOpen) {
+        $taskArguments += "--no-open"
     }
     & $taskPython @taskArguments
-    if ($LASTEXITCODE -ne 0) {
-        return
-    }
-    & $taskPython -m shellloop inspect $Output
-    if ($LASTEXITCODE -ne 0) {
-        throw "Trajectory inspection failed with exit code $LASTEXITCODE."
-    }
-    Write-Host "Trajectory: $Output"
 }
 finally {
     Pop-Location
-    if ($taskClearApiKey) {
-        Remove-Item Env:OLLAMA_API_KEY -ErrorAction SilentlyContinue
-    }
     if ($null -eq $taskPreviousEncoding) {
         Remove-Item Env:PYTHONIOENCODING -ErrorAction SilentlyContinue
     }

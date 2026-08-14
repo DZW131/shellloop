@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shellloop"
-version = "0.1.0"
-description = "A minimal, traceable coding agent built around an LLM-to-shell execution loop."
+version = "0.3.0"
+description = "A local-first, observable and evolvable Agent Harness Studio."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -26,6 +26,9 @@ shellloop = "shellloop.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+shellloop = ["studio_static/*.css", "studio_static/*.html", "studio_static/*.js"]
 
 [tool.ruff]
 line-length = 120

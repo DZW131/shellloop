@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Shellloop Studio</title><link rel="stylesheet" href="style.css"></head>
+  <body>
+    <header class="topbar"><div class="brand"><span class="brand-mark">S/</span>Shellloop Studio</div><nav class="nav"><a class="active" href="index.html">概览</a><a href="runtime.html">运行观测台</a><a href="evolution.html">演化工作台</a></nav></header>
+    <main>
+      <p class="eyebrow">Observable · Evolvable · Local-first</p>
+      <h1>让初学者看懂、塑造并验证自己的 Agent Harness。</h1>
+      <p class="lead">Shellloop 将真实模型 API、一次性 Docker 会话、实时事实事件和人工批准的 Harness 演化闭环放在同一个本地工作台中。</p>
+      <div class="status-row" id="status"><span class="pill">正在检查本地沙箱…</span></div>
+      <section class="cards">
+        <article class="card"><h2>运行观测台</h2><p>按步骤呈现模型请求、动作解析、命令执行、返回码和最终状态。它显示可验证事件，而不是隐藏推理。</p><a href="runtime.html">打开实时观测台</a></article>
+        <article class="card"><h2>演化工作台</h2><p>用自然语言提出改进，比较当前与候选 Harness，先在沙箱验证，再由你批准应用。</p><a href="evolution.html">打开演化工作台</a></article>
+      </section>
+    </main>
+    <script>fetch('/api/status').then(r=>r.json()).then(s=>{document.querySelector('#status').innerHTML=`<span class="pill ${s.sandbox_available?'ok':'warn'}"><i class="dot"></i>${s.sandbox_available?'Docker 沙箱可用':'Docker 未就绪：仅可预览'}</span><span class="pill">本地服务 · 127.0.0.1</span><span class="pill">真实 API · 密钥不保存</span>`}).catch(()=>{document.querySelector('#status').textContent='无法读取 Studio 状态'})</script>
+  </body>
+</html>

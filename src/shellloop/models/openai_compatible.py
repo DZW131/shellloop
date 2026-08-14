@@ -78,6 +78,11 @@ class OpenAICompatibleModel:
         self._transport = transport if transport is not None else UrllibJsonTransport()
 
     def query(self, messages: list[Message]) -> Message:
+        text = self.complete(messages)
+        return {"role": "assistant", "content": text, "extra": {"actions": parse_text_actions(text)}}
+
+    def complete(self, messages: list[Message]) -> str:
+        """Return raw assistant text for a constrained Studio proposal."""
         url = f"{self._api_base}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -85,9 +90,7 @@ class OpenAICompatibleModel:
         }
         payload = {"model": self._model_name, "messages": [_openai_message(message) for message in messages]}
         data = self._transport.post_json(url, headers, payload)
-        text = _extract_assistant_text(data)
-        actions = parse_text_actions(text)
-        return {"role": "assistant", "content": text, "extra": {"actions": actions}}
+        return _extract_assistant_text(data)
 
 
 def _openai_message(message: Message) -> dict[str, str]:

@@ -6,21 +6,56 @@ from typer.testing import CliRunner
 
 from shellloop.cli import _build_model, app
 from shellloop.config import RunConfig
-from shellloop.models import OllamaCloudModel
+from shellloop.environments import DockerEnvironment
+from shellloop.models import OllamaCloudModel, OpenAICompatibleModel
 
 
-def test_cli_writes_a_trajectory(tmp_path: Path):
+class TestModel:
+    def query(self, messages: list[dict]) -> dict:
+        return {
+            "role": "assistant",
+            "content": "```bash\necho SHELLLOOP_DONE && echo complete\n```",
+            "extra": {"actions": [{"command": "echo SHELLLOOP_DONE && echo complete"}]},
+        }
+
+
+def _patch_run_dependencies(monkeypatch: pytest.MonkeyPatch, workspace: Path) -> None:
+    monkeypatch.setattr("shellloop.cli._build_model", lambda config, key: TestModel())
+    monkeypatch.setattr(DockerEnvironment, "available", staticmethod(lambda: True))
+    monkeypatch.setattr(
+        DockerEnvironment,
+        "execute",
+        lambda self, action: {
+            "output": "SHELLLOOP_DONE\ncomplete\n",
+            "returncode": 0,
+            "exception_info": "",
+            "finished": True,
+            "submission": "complete\n",
+        },
+    )
+    monkeypatch.setattr("shellloop.cli.create_session_workspace", lambda source, output: workspace)
+
+
+def test_cli_writes_a_trajectory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    _patch_run_dependencies(monkeypatch, tmp_path)
     output = tmp_path / "run.traj.json"
-    result = CliRunner().invoke(app, ["--task", "Demonstrate the loop", "--output", str(output), "--yolo"])
+    result = CliRunner().invoke(
+        app, ["--task", "Demonstrate the loop", "--model", "test-model", "--output", str(output), "--yolo"]
+    )
 
     assert result.exit_code == 0
     assert json.loads(output.read_text(encoding="utf-8"))["result"]["exit_status"] == "Submitted"
+    assert json.loads(output.read_text(encoding="utf-8"))["events"][0]["event"] == "run_started"
+    assert "[trace]" in result.output
     assert "Trajectory saved to" in result.output
 
 
-def test_cli_requires_confirmation_by_default(tmp_path: Path):
+def test_cli_requires_confirmation_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    _patch_run_dependencies(monkeypatch, tmp_path)
     output = tmp_path / "run.traj.json"
-    result = CliRunner().invoke(app, ["--task", "Demonstrate the loop", "--output", str(output)], input="y\n")
+    result = CliRunner().invoke(
+        app, ["--task", "Demonstrate the loop", "--model", "test-model", "--output", str(output)], input="y\n"
+    )
 
     assert result.exit_code == 0
     assert "Run the agent command loop in the configured workspace?" in result.output
@@ -36,7 +71,7 @@ def test_cli_rejects_unsupported_model_provider():
 def test_ollama_cloud_requires_an_api_key():
     config = RunConfig(workspace=Path.cwd(), model_provider="ollama-cloud", model_name="gpt-oss:120b-cloud")
 
-    with pytest.raises(ValueError, match="OLLAMA_API_KEY"):
+    with pytest.raises(ValueError, match="API key"):
         _build_model(config, None)
 
 
@@ -44,6 +79,26 @@ def test_ollama_cloud_model_is_built_without_network_access():
     config = RunConfig(workspace=Path.cwd(), model_provider="ollama-cloud", model_name="gpt-oss:120b-cloud")
 
     assert isinstance(_build_model(config, "test-key"), OllamaCloudModel)
+
+
+def test_openai_compatible_model_is_built_without_network_access():
+    config = RunConfig(
+        workspace=Path.cwd(),
+        model_provider="openai-compatible",
+        model_name="test-model",
+        api_base="https://api.example.com/v1",
+    )
+
+    assert isinstance(_build_model(config, "test-key"), OpenAICompatibleModel)
+
+
+def test_cli_refuses_host_execution_when_docker_is_unavailable(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(DockerEnvironment, "available", staticmethod(lambda: False))
+    monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+    result = CliRunner().invoke(app, ["--task", "Do work", "--model", "test-model", "--yolo"])
+
+    assert result.exit_code == 2
+    assert "Docker is required" in result.output
 
 
 # --- inspect subcommand tests ---

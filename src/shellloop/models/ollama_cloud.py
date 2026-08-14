@@ -60,6 +60,11 @@ class OllamaCloudModel:
         self._transport = transport if transport is not None else UrllibJsonTransport()
 
     def query(self, messages: list[Message]) -> Message:
+        text = self.complete(messages)
+        return {"role": "assistant", "content": text, "extra": {"actions": parse_text_actions(text)}}
+
+    def complete(self, messages: list[Message]) -> str:
+        """Return raw assistant text for a constrained Studio proposal."""
         data = self._transport.post_json(
             f"{self._api_base}/chat",
             {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"},
@@ -69,8 +74,7 @@ class OllamaCloudModel:
                 "stream": False,
             },
         )
-        text = _extract_assistant_text(data)
-        return {"role": "assistant", "content": text, "extra": {"actions": parse_text_actions(text)}}
+        return _extract_assistant_text(data)
 
 
 def _ollama_message(message: Message) -> dict[str, str]:

@@ -5,4 +5,5 @@ confirm: true
 output_path: artifacts/ollama-cloud.traj.json
 model_provider: ollama-cloud
 model_name: gpt-oss:120b-cloud
-ollama_base: https://ollama.com/api
+api_base: https://ollama.com/api
+sandbox_image: shellloop-sandbox:0.3

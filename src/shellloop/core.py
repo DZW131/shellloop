@@ -5,6 +5,7 @@ from typing import Any, Protocol
 Message = dict[str, Any]
 Action = dict[str, str]
 Output = dict[str, Any]
+TraceEvent = dict[str, Any]
 
 
 class Model(Protocol):
@@ -23,3 +24,9 @@ class Agent(Protocol):
     """Run a task until it finishes or reaches a limit."""
 
     def run(self, task: str) -> dict[str, Any]: ...
+
+
+class TraceSink(Protocol):
+    """Receive one safe, observable Agent lifecycle event."""
+
+    def emit(self, event: TraceEvent) -> None: ...
