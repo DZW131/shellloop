@@ -36,6 +36,28 @@ shellloop --task "Demonstrate the agent loop" --output artifacts/demo.traj.json
 The default scripted model runs a harmless demonstration command and writes the
 full conversation and command observations to the output file.
 
+## Inspecting trajectories
+
+After a run, inspect the trajectory summary without exposing raw messages,
+shell commands, or sensitive content:
+
+~~~bash
+shellloop inspect artifacts/demo.traj.json
+~~~
+
+Output:
+
+~~~text
+exit_status: Submitted
+steps: 2
+message_count: 6
+command_count: 2
+~~~
+
+The inspect command only reads the file—it does not execute any commands
+contained in the trajectory. If the file is missing, contains invalid JSON, or
+lacks required fields, a clear error is printed and the exit code is non-zero.
+
 ## Tests
 
 ~~~bash
@@ -71,6 +93,7 @@ src/shellloop/
   models/          Offline model implementations
   cli.py           Command-line interface
   config.py        YAML loading and runtime configuration
+  inspect.py       Offline trajectory summary tool
   serialize.py     Trajectory persistence
 tests/             Offline unit and CLI tests
 examples/          Runnable configuration examples
