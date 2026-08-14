@@ -36,6 +36,21 @@ shellloop --task "Demonstrate the agent loop" --output artifacts/demo.traj.json
 The default scripted model runs a harmless demonstration command and writes the
 full conversation and command observations to the output file.
 
+## Ollama Cloud
+
+Shellloop can call Ollama Cloud directly without a local Ollama service. Create
+an API key in Ollama, then set it only in your shell environment:
+
+~~~powershell
+$env:OLLAMA_API_KEY = "your_api_key"
+shellloop --provider ollama-cloud --model "gpt-oss:120b-cloud" --task "List the files" --output artifacts/cloud.traj.json
+~~~
+
+On WSL or Linux, use `export OLLAMA_API_KEY='your_api_key'` instead. The key is
+sent only as an authorization header; never put it in YAML, source code, a
+trajectory, or a Git commit. See `examples/ollama-cloud.yaml` for non-secret
+settings. Ollama Cloud model names and API keys are managed in Ollama.
+
 ## Inspecting trajectories
 
 After a run, inspect the trajectory summary without exposing raw messages,
@@ -74,6 +89,9 @@ max_steps: 8
 timeout: 30
 confirm: true
 output_path: artifacts/run.traj.json
+model_provider: scripted
+model_name: null
+ollama_base: https://ollama.com/api
 ~~~
 
 Pass a configuration file with:
@@ -90,7 +108,7 @@ Command-line options override the configuration file.
 src/shellloop/
   agents/          Agent control flow
   environments/    Shell execution
-  models/          Offline model implementations
+  models/          Scripted, OpenAI-compatible, and Ollama Cloud model implementations
   cli.py           Command-line interface
   config.py        YAML loading and runtime configuration
   inspect.py       Offline trajectory summary tool
@@ -103,8 +121,9 @@ examples/          Runnable configuration examples
 
 - v0.1: offline scripted model, one-action agent loop, local execution, CLI,
   JSON trajectories, and tests.
-- v0.2: one real OpenAI-compatible model adapter and command-format parsing.
-- v0.3: optional sandbox backends and trajectory inspection.
+- v0.2: OpenAI-compatible and Ollama Cloud model adapters, command-format parsing,
+  and trajectory inspection.
+- Next: optional sandbox backends and command-permission policies.
 
 ## License and credits
 

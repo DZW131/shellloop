@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 from shellloop.agents import DefaultAgent
+from shellloop.agents.default import SYSTEM_PROMPT
 from shellloop.environments import LocalEnvironment
 from shellloop.models import ScriptedModel
 
@@ -40,3 +41,14 @@ def test_agent_rejects_zero_or_multiple_actions(tmp_path: Path):
     assert (
         DefaultAgent(model, LocalEnvironment(tmp_path, 1), max_steps=1).run("Do work")["exit_status"] == "FormatError"
     )
+
+
+def test_agent_instructs_models_to_return_one_fenced_shell_action(tmp_path: Path):
+    agent = DefaultAgent(
+        ScriptedModel([response("echo SHELLLOOP_DONE && echo complete")]), LocalEnvironment(tmp_path, 1), 1
+    )
+
+    agent.run("Finish the task")
+
+    assert agent.messages[0]["content"] == SYSTEM_PROMPT
+    assert "exactly one shell command" in SYSTEM_PROMPT

@@ -1,9 +1,12 @@
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
-from shellloop.cli import app
+from shellloop.cli import _build_model, app
+from shellloop.config import RunConfig
+from shellloop.models import OllamaCloudModel
 
 
 def test_cli_writes_a_trajectory(tmp_path: Path):
@@ -20,7 +23,27 @@ def test_cli_requires_confirmation_by_default(tmp_path: Path):
     result = CliRunner().invoke(app, ["--task", "Demonstrate the loop", "--output", str(output)], input="y\n")
 
     assert result.exit_code == 0
-    assert "Run the predefined offline demonstration command?" in result.output
+    assert "Run the agent command loop in the configured workspace?" in result.output
+
+
+def test_cli_rejects_unsupported_model_provider():
+    result = CliRunner().invoke(app, ["--task", "Demonstrate the loop", "--provider", "unknown", "--yolo"])
+
+    assert result.exit_code == 2
+    assert "unsupported model provider" in result.output
+
+
+def test_ollama_cloud_requires_an_api_key():
+    config = RunConfig(workspace=Path.cwd(), model_provider="ollama-cloud", model_name="gpt-oss:120b-cloud")
+
+    with pytest.raises(ValueError, match="OLLAMA_API_KEY"):
+        _build_model(config, None)
+
+
+def test_ollama_cloud_model_is_built_without_network_access():
+    config = RunConfig(workspace=Path.cwd(), model_provider="ollama-cloud", model_name="gpt-oss:120b-cloud")
+
+    assert isinstance(_build_model(config, "test-key"), OllamaCloudModel)
 
 
 # --- inspect subcommand tests ---

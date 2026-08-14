@@ -4,6 +4,11 @@ from typing import Any
 
 from shellloop.core import Environment, Message, Model
 
+SYSTEM_PROMPT = (
+    "You are Shellloop, a minimal coding agent. Respond with exactly one shell command "
+    "inside a fenced bash code block and do not include another code block."
+)
+
 
 class DefaultAgent:
     """Run one model action per step until completion or a step limit."""
@@ -16,7 +21,7 @@ class DefaultAgent:
 
     def run(self, task: str) -> dict[str, Any]:
         self.messages = [
-            {"role": "system", "content": "You are Shellloop, a minimal coding agent."},
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": task},
         ]
         for step in range(1, self.max_steps + 1):
