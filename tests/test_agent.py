@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from shellloop.agents import DefaultAgent
-from shellloop.agents.default import SYSTEM_PROMPT
+from shellloop.agents.default import SYSTEM_PROMPT, build_system_prompt
 from shellloop.environments import LocalEnvironment
 from shellloop.models import ScriptedModel
 
@@ -50,5 +50,28 @@ def test_agent_instructs_models_to_return_one_fenced_shell_action(tmp_path: Path
 
     agent.run("Finish the task")
 
+    assert agent.messages[0]["role"] == "system"
     assert agent.messages[0]["content"] == SYSTEM_PROMPT
     assert "exactly one shell command" in SYSTEM_PROMPT
+
+
+def test_windows_prompt_defines_cmd_completion_example():
+    prompt = build_system_prompt(is_windows=True)
+
+    assert "SHELLLOOP_DONE" in prompt
+    assert "cmd.exe" in prompt
+    assert "echo SHELLLOOP_DONE &" in prompt
+
+
+def test_posix_prompt_defines_andand_completion_example():
+    prompt = build_system_prompt(is_windows=False)
+
+    assert "SHELLLOOP_DONE" in prompt
+    assert "POSIX shell" in prompt
+    assert "echo SHELLLOOP_DONE &&" in prompt
+
+
+def test_windows_prompt_does_not_use_powershell_7_chain():
+    prompt = build_system_prompt(is_windows=True)
+
+    assert "SHELLLOOP_DONE &&" not in prompt
