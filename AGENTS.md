@@ -32,4 +32,3 @@ minimal architecture of mini-SWE-agent.
 
 Ask before changing a public interface, adding a dependency, copying upstream
 code, or expanding scope.
-

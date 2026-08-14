@@ -87,4 +87,3 @@ examples/          Runnable configuration examples
 
 Shellloop is released under the MIT License. See [CREDITS.md](CREDITS.md) for
 the project inspiration and attribution boundary.
-
