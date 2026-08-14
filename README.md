@@ -25,7 +25,22 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 ~~~
 
-On Windows, run these commands inside WSL rather than native PowerShell.
+On Windows, WSL is recommended for isolation. Native PowerShell users can use
+the student launcher below.
+
+## Student quick start on Windows
+
+After cloning or downloading this repository, double-click `start.bat`. On its
+first run it creates `.venv` and installs the project automatically. Then
+choose one of the two menu options:
+
+1. **Offline demo** — no account or API key required.
+2. **Ollama Cloud** — enter a model name and API key when prompted; the key is
+   hidden while typing and is not saved to disk.
+
+The launcher asks for a task, requires a safety confirmation, saves a trajectory
+under `artifacts/`, and prints its safe summary. For scripted use, teachers can
+also run `powershell -ExecutionPolicy Bypass -File .\start.ps1 -Mode offline -Task "Demonstrate the loop" -Yes`.
 
 ## Offline demo
 
