@@ -38,7 +38,8 @@ def test_does_not_mark_finished_without_sentinel(tmp_path: Path):
 
 def test_runs_command_inside_configured_workspace(tmp_path: Path):
     env = LocalEnvironment(tmp_path, timeout=30)
-    result = env.execute({"command": "cd"})
+    command = f'"{sys.executable}" -c "import os; print(os.getcwd())"'
+    result = env.execute({"command": command})
 
     assert os.path.normcase(result["output"].strip()) == os.path.normcase(str(env.workspace))
 
