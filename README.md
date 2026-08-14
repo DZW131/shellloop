@@ -66,6 +66,11 @@ sent only as an authorization header; never put it in YAML, source code, a
 trajectory, or a Git commit. See `examples/ollama-cloud.yaml` for non-secret
 settings. Ollama Cloud model names and API keys are managed in Ollama.
 
+If the launcher reports `HTTP 401`, create or copy an Ollama **API key** from
+the Ollama API-key settings page, rather than using an account password or a
+local-service key. The key is required for direct programmatic access to
+`https://ollama.com/api`.
+
 ## Inspecting trajectories
 
 After a run, inspect the trajectory summary without exposing raw messages,

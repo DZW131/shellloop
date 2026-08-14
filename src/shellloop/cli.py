@@ -12,6 +12,8 @@ from shellloop.core import Model
 from shellloop.environments import LocalEnvironment
 from shellloop.inspect import summarize_trajectory
 from shellloop.models import OllamaCloudModel, demo_model
+from shellloop.models.ollama_cloud import OllamaCloudError
+from shellloop.models.text_actions import TextActionFormatError
 from shellloop.serialize import save_trajectory
 
 app = typer.Typer(invoke_without_command=True, add_completion=False, no_args_is_help=True)
@@ -55,7 +57,11 @@ def main(
     agent = DefaultAgent(
         selected_model, LocalEnvironment(run_config.workspace, run_config.timeout), run_config.max_steps
     )
-    result = agent.run(task)
+    try:
+        result = agent.run(task)
+    except (OllamaCloudError, TextActionFormatError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1)
     save_trajectory(
         run_config.output_path,
         messages=agent.messages,

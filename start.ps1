@@ -74,7 +74,7 @@ try {
             $taskSecureKey = Read-Host "Ollama API Key (used only for this run)" -AsSecureString
             $taskPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($taskSecureKey)
             try {
-                $env:OLLAMA_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($taskPointer)
+                $env:OLLAMA_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($taskPointer).Trim()
             }
             finally {
                 [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($taskPointer)
@@ -99,7 +99,7 @@ try {
     }
     & $taskPython @taskArguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Shellloop failed with exit code $LASTEXITCODE."
+        return
     }
     & $taskPython -m shellloop inspect $Output
     if ($LASTEXITCODE -ne 0) {
