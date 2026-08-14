@@ -1,13 +1,25 @@
 """The minimal model-to-shell control loop."""
 
+import os
 from typing import Any
 
 from shellloop.core import Environment, Message, Model
 
-SYSTEM_PROMPT = (
-    "You are Shellloop, a minimal coding agent. Respond with exactly one shell command "
-    "inside a fenced bash code block and do not include another code block."
-)
+
+def build_system_prompt(*, is_windows: bool) -> str:
+    """Build the agent system prompt with a platform-appropriate completion protocol."""
+    join = "&" if is_windows else "&&"
+    shell = "cmd.exe" if is_windows else "POSIX shell"
+    return (
+        "You are Shellloop, a minimal coding agent. Respond with exactly one shell command "
+        "inside a single fenced bash code block and do not include explanation text outside "
+        f"the code block. When the task is complete, the final action's first line of output "
+        f"must be SHELLLOOP_DONE, followed by the result on the following lines. This machine "
+        f"runs {shell}; complete a task with e.g. `echo SHELLLOOP_DONE {join} <command>`."
+    )
+
+
+SYSTEM_PROMPT = build_system_prompt(is_windows=os.name == "nt")
 
 
 class DefaultAgent:
