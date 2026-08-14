@@ -127,3 +127,40 @@ def test_cli_inspect_excludes_sensitive_content(tmp_path: Path):
     assert "export KEY" not in result.output
     assert "API key" not in result.output
     assert "command_count: 1" in result.output
+
+
+# --- teaching trace tests ---
+
+
+def test_cli_displays_trace_events_by_default(tmp_path: Path):
+    output = tmp_path / "run.traj.json"
+    result = CliRunner().invoke(app, ["--task", "Demonstrate the loop", "--output", str(output), "--yolo"])
+
+    assert result.exit_code == 0
+    assert "[trace] step 0 run_started:" in result.output
+    assert "[trace] step 1 model_request:" in result.output
+    assert "run_finished: run finished (exit_status=Submitted)" in result.output
+
+
+def test_cli_no_trace_hides_display_but_saves_events(tmp_path: Path):
+    output = tmp_path / "run.traj.json"
+    result = CliRunner().invoke(
+        app, ["--task", "Demonstrate the loop", "--output", str(output), "--yolo", "--no-trace"]
+    )
+
+    assert result.exit_code == 0
+    assert "[trace]" not in result.output
+    data = json.loads(output.read_text(encoding="utf-8"))
+    assert data["events"]
+    assert data["events"][0]["event"] == "run_started"
+    assert data["events"][-1]["event"] == "run_finished"
+
+
+def test_cli_trajectory_events_do_not_contain_the_task_text(tmp_path: Path):
+    output = tmp_path / "run.traj.json"
+    task = "Demonstrate the loop with a SECRET marker"
+    result = CliRunner().invoke(app, ["--task", task, "--output", str(output), "--yolo"])
+
+    assert result.exit_code == 0
+    data = json.loads(output.read_text(encoding="utf-8"))
+    assert task not in json.dumps(data["events"])
