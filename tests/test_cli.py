@@ -21,3 +21,86 @@ def test_cli_requires_confirmation_by_default(tmp_path: Path):
 
     assert result.exit_code == 0
     assert "Run the predefined offline demonstration command?" in result.output
+
+
+# --- inspect subcommand tests ---
+
+
+def _write_trajectory(tmp_path: Path, data: dict) -> Path:
+    path = tmp_path / "run.traj.json"
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def _normal_trajectory() -> dict:
+    return {
+        "messages": [
+            {"role": "system", "content": "You are Shellloop."},
+            {"role": "user", "content": "Demonstrate the loop."},
+            {
+                "role": "assistant",
+                "content": "Running a command.",
+                "extra": {"actions": [{"command": "echo hello"}]},
+            },
+            {"role": "tool", "content": "hello", "extra": {"output": "hello"}},
+            {
+                "role": "assistant",
+                "content": "Running a second command.",
+                "extra": {"actions": [{"command": "echo world"}]},
+            },
+            {"role": "tool", "content": "world", "extra": {"output": "world"}},
+        ],
+        "result": {"exit_status": "Submitted", "submission": "done", "steps": 2},
+        "config": {"workspace": ".", "max_steps": 8, "timeout": 30},
+    }
+
+
+def test_cli_inspect_normal_trajectory(tmp_path: Path):
+    path = _write_trajectory(tmp_path, _normal_trajectory())
+    result = CliRunner().invoke(app, ["inspect", str(path)])
+
+    assert result.exit_code == 0
+    assert "exit_status: Submitted" in result.output
+    assert "steps: 2" in result.output
+    assert "message_count: 6" in result.output
+    assert "command_count: 2" in result.output
+
+
+def test_cli_inspect_file_not_found(tmp_path: Path):
+    missing = tmp_path / "nonexistent.traj.json"
+    result = CliRunner().invoke(app, ["inspect", str(missing)])
+
+    assert result.exit_code == 1
+    assert "not found" in result.output
+
+
+def test_cli_inspect_invalid_json(tmp_path: Path):
+    path = tmp_path / "broken.traj.json"
+    path.write_text("{not valid json", encoding="utf-8")
+    result = CliRunner().invoke(app, ["inspect", str(path)])
+
+    assert result.exit_code == 1
+    assert "invalid JSON" in result.output
+
+
+def test_cli_inspect_excludes_sensitive_content(tmp_path: Path):
+    data = {
+        "messages": [
+            {
+                "role": "assistant",
+                "content": "Using API key sk-secret-12345.",
+                "extra": {"actions": [{"command": "export KEY=sk-secret-12345"}]},
+            },
+            {"role": "tool", "content": "ok", "extra": {"output": ""}},
+        ],
+        "result": {"exit_status": "Submitted", "submission": "", "steps": 1},
+        "config": {"workspace": "/home/user", "max_steps": 8, "timeout": 30},
+    }
+    path = _write_trajectory(tmp_path, data)
+    result = CliRunner().invoke(app, ["inspect", str(path)])
+
+    assert result.exit_code == 0
+    assert "sk-secret" not in result.output
+    assert "export KEY" not in result.output
+    assert "API key" not in result.output
+    assert "command_count: 1" in result.output
