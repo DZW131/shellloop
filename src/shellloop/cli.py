@@ -15,6 +15,7 @@ from shellloop.models import OllamaCloudModel, demo_model
 from shellloop.models.ollama_cloud import OllamaCloudError
 from shellloop.models.text_actions import TextActionFormatError
 from shellloop.serialize import save_trajectory
+from shellloop.tracing import ConsoleTraceSink
 
 app = typer.Typer(invoke_without_command=True, add_completion=False, no_args_is_help=True)
 
@@ -27,6 +28,7 @@ def main(
     output: Path | None = typer.Option(None, "--output", "-o", help="Trajectory output path."),
     max_steps: int | None = typer.Option(None, "--max-steps", help="Maximum model calls."),
     yolo: bool = typer.Option(False, "--yolo", help="Skip the teaching-mode confirmation notice."),
+    no_trace: bool = typer.Option(False, "--no-trace", help="Do not print live [trace] events; still save them."),
     provider: str | None = typer.Option(None, "--provider", help="Model provider: scripted or ollama-cloud."),
     model: str | None = typer.Option(None, "--model", help="Model name for the selected provider."),
     ollama_base: str | None = typer.Option(None, "--ollama-base", help="Ollama API base URL."),
@@ -55,7 +57,10 @@ def main(
         typer.confirm("Run the agent command loop in the configured workspace?", abort=True)
 
     agent = DefaultAgent(
-        selected_model, LocalEnvironment(run_config.workspace, run_config.timeout), run_config.max_steps
+        selected_model,
+        LocalEnvironment(run_config.workspace, run_config.timeout),
+        run_config.max_steps,
+        trace_sink=None if no_trace else ConsoleTraceSink(),
     )
     try:
         result = agent.run(task)
@@ -67,6 +72,7 @@ def main(
         messages=agent.messages,
         result=result,
         config=serialize_config(run_config),
+        events=agent.events,
     )
     typer.echo(f"{result['exit_status']}: {result['submission'].strip()}")
     typer.echo(f"Trajectory saved to {run_config.output_path}")

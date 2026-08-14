@@ -23,3 +23,9 @@ class Agent(Protocol):
     """Run a task until it finishes or reaches a limit."""
 
     def run(self, task: str) -> dict[str, Any]: ...
+
+
+class TraceSink(Protocol):
+    """Receive one teaching-trace event at a time."""
+
+    def emit(self, event: dict) -> None: ...
