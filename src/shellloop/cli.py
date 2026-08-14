@@ -28,7 +28,7 @@ def main(
         confirm=False if yolo else None,
     )
     if run_config.confirm:
-        typer.echo("Teaching mode: the offline demo executes one predefined harmless command.")
+        typer.confirm("Run the predefined offline demonstration command?", abort=True)
 
     agent = DefaultAgent(demo_model(), LocalEnvironment(run_config.workspace, run_config.timeout), run_config.max_steps)
     result = agent.run(task)
