@@ -48,3 +48,15 @@ def test_leaves_original_text_untouched():
     before = text
     parse_text_actions(text)
     assert text == before
+
+
+def test_rejects_code_block_with_unsupported_language():
+    text = "```python\nprint('hi')\n```"
+    with pytest.raises(TextActionFormatError):
+        parse_text_actions(text)
+
+
+def test_rejects_fence_not_followed_by_newline():
+    text = "```bash echo hi\n```"
+    with pytest.raises(TextActionFormatError):
+        parse_text_actions(text)
